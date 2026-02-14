@@ -1,12 +1,16 @@
+import { useState } from 'react';
 import { HeroStats } from '../components/dashboard/HeroStats';
 import { SavingsChart } from '../components/dashboard/SavingsChart';
 import { ZombieTable } from '../components/dashboard/ZombieTable';
+import { AddAccountModal } from '../components/dashboard/AddAccountModal';
 import { useScannerData } from '../hooks/useScannerData';
 import { useAccounts } from '../hooks/useAccounts';
 import { motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export function Dashboard() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const { data: accounts } = useAccounts();
   const accountId = accounts?.[0]?.id || '47ae8755-9041-451b-96bf-4a522b51295d';
   
@@ -43,6 +47,13 @@ export function Dashboard() {
             </h1>
             <p className="text-slate-400 mt-2">FinOps Dashboard - Cloud Waste Detection</p>
           </div>
+          <Button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-indigo-600 hover:bg-indigo-700"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Connect Account
+          </Button>
         </div>
 
         {/* Hero Stats */}
@@ -58,6 +69,9 @@ export function Dashboard() {
         {/* Zombie Resources Table */}
         <ZombieTable resources={scanData?.results || []} />
       </motion.div>
+
+      {/* Add Account Modal */}
+      <AddAccountModal open={isModalOpen} onOpenChange={setIsModalOpen} />
     </div>
   );
 }

@@ -58,4 +58,22 @@ export class ScannerService {
       };
     }
   }
+
+  async deleteVolume(accountId: string, region: string, volumeId: string) {
+    // Call AWS service to delete the volume
+    await this.awsService.deleteEbsVolume(accountId, region, volumeId);
+
+    // Delete the corresponding scan result from database
+    await this.prisma.scanResult.deleteMany({
+      where: {
+        accountId,
+        resourceId: volumeId,
+      },
+    });
+
+    return {
+      success: true,
+      message: `Volume ${volumeId} deleted successfully`,
+    };
+  }
 }
