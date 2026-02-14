@@ -1,0 +1,11 @@
+model ScanResult {
+  id           String       @id @default(uuid())
+  resourceId   String
+  resourceType String       @default("EBS")
+  sizeGb       Int
+  region       String
+  monthlyCost  Float
+  account      CloudAccount @relation(fields: [accountId], references: [id])
+  accountId    String
+  createdAt    DateTime     @default(now())
+}
