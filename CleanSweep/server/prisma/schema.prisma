@@ -1,0 +1,26 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["prismaSchemaFolder"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model CloudAccount {
+  id          String   @id @default(uuid())
+  accountName String
+  provider    Provider
+  accessKey   String
+  secretKey   String   // Encrypted
+  region      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum Provider {
+  AWS
+  AZURE
+  GCP
+}
