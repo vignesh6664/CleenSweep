@@ -1,19 +1,16 @@
-import { useState } from 'react';
 import { HeroStats } from '../components/dashboard/HeroStats';
 import { SavingsChart } from '../components/dashboard/SavingsChart';
 import { ZombieTable } from '../components/dashboard/ZombieTable';
-import { DemoModeToggle } from '../components/dashboard/DemoModeToggle';
 import { useScannerData } from '../hooks/useScannerData';
 import { useAccounts } from '../hooks/useAccounts';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 
 export function Dashboard() {
-  const [demoMode, setDemoMode] = useState(true);
   const { data: accounts } = useAccounts();
   const accountId = accounts?.[0]?.id || '47ae8755-9041-451b-96bf-4a522b51295d';
   
-  const { data: scanData, isLoading, error } = useScannerData(accountId, demoMode);
+  const { data: scanData, isLoading, error } = useScannerData(accountId, false);
 
   if (isLoading) {
     return (
@@ -46,7 +43,6 @@ export function Dashboard() {
             </h1>
             <p className="text-slate-400 mt-2">FinOps Dashboard - Cloud Waste Detection</p>
           </div>
-          <DemoModeToggle demoMode={demoMode} onToggle={setDemoMode} />
         </div>
 
         {/* Hero Stats */}
