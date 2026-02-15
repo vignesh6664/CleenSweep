@@ -1,0 +1,11 @@
+model User {
+  id        String   @id // Kinde user ID
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts  CloudAccount[]
+
+  @@map("users")
+}

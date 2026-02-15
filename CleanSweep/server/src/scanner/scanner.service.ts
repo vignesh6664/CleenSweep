@@ -76,4 +76,24 @@ export class ScannerService {
       message: `Volume ${volumeId} deleted successfully`,
     };
   }
+
+  async getIdleInstances(accountId: string) {
+    try {
+      // Call AWS service to get idle instances
+      const idleInstances = await this.awsService.getIdleInstances(accountId);
+      
+      return {
+        resourcesFound: idleInstances.length,
+        totalMonthlyCost: idleInstances.reduce((sum, inst) => sum + inst.monthlyCost, 0),
+        instances: idleInstances,
+      };
+    } catch (error) {
+      console.error('Error fetching idle instances:', error.message);
+      return {
+        resourcesFound: 0,
+        totalMonthlyCost: 0,
+        instances: [],
+      };
+    }
+  }
 }

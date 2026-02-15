@@ -8,6 +8,13 @@ model CloudAccount {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   scanResults ScanResult[]
+  schedules   Schedule[]
+
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("cloud_accounts")
 }
 
 enum Provider {

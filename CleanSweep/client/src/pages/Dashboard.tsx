@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { HeroStats } from '../components/dashboard/HeroStats';
 import { SavingsChart } from '../components/dashboard/SavingsChart';
 import { ZombieTable } from '../components/dashboard/ZombieTable';
+import { IdleInstancesTable } from '../components/dashboard/IdleInstancesTable';
 import { AddAccountModal } from '../components/dashboard/AddAccountModal';
 import { useScannerData } from '../hooks/useScannerData';
 import { useAccounts } from '../hooks/useAccounts';
+import { useIdleInstances } from '../hooks/useIdleInstances';
 import { motion } from 'framer-motion';
 import { Loader2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,8 +17,15 @@ export function Dashboard() {
   const accountId = accounts?.[0]?.id || '47ae8755-9041-451b-96bf-4a522b51295d';
   
   const { data: scanData, isLoading, error } = useScannerData(accountId, false);
+  const { data: idleData, isLoading: idleLoading } = useIdleInstances(accountId);
 
-  if (isLoading) {
+  // Calculate total potential waste (orphaned volumes + idle instances)
+  const orphanedVolumeCost = scanData?.totalSavings || 0;
+  const idleInstanceCost = idleData?.totalMonthlyCost || 0;
+  const totalPotentialWaste = orphanedVolumeCost + idleInstanceCost;
+  const totalResourcesFound = (scanData?.resourcesFound || 0) + (idleData?.resourcesFound || 0);
+
+  if (isLoading || idleLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
@@ -58,13 +67,19 @@ export function Dashboard() {
 
         {/* Hero Stats */}
         <HeroStats
-          totalSavings={scanData?.totalSavings || 0}
-          resourcesFound={scanData?.resourcesFound || 0}
+          totalSavings={totalPotentialWaste}
+          resourcesFound={totalResourcesFound}
           activeAccounts={accounts?.length || 1}
         />
 
         {/* Savings Chart */}
-        <SavingsChart totalSavings={scanData?.totalSavings || 0} />
+        <SavingsChart totalSavings={totalPotentialWaste} />
+
+        {/* Underutilized Instances Table */}
+        <IdleInstancesTable 
+          instances={idleData?.instances || []} 
+          accountId={accountId}
+        />
 
         {/* Zombie Resources Table */}
         <ZombieTable resources={scanData?.results || []} />

@@ -11,7 +11,7 @@ export class AccountsService {
     private encryptionService: EncryptionService,
   ) {}
 
-  async create(createCloudAccountDto: CreateCloudAccountDto) {
+  async create(createCloudAccountDto: CreateCloudAccountDto, userId: string) {
     const encryptedSecretKey = this.encryptionService.encrypt(
       createCloudAccountDto.secretKey,
     );
@@ -21,11 +21,32 @@ export class AccountsService {
         ...createCloudAccountDto,
         secretKey: encryptedSecretKey,
         provider: createCloudAccountDto.provider as Provider,
+        userId,
       },
     });
   }
 
-  async findAll() {
-    return this.prisma.cloudAccount.findMany();
+  async findAll(userId: string) {
+    return this.prisma.cloudAccount.findMany({
+      where: { userId },
+    });
+  }
+
+  async findOne(id: string, userId: string) {
+    return this.prisma.cloudAccount.findFirst({
+      where: { id, userId },
+    });
+  }
+
+  async delete(id: string, userId: string) {
+    // Verify ownership before deleting
+    const account = await this.findOne(id, userId);
+    if (!account) {
+      throw new Error('Account not found or access denied');
+    }
+
+    return this.prisma.cloudAccount.delete({
+      where: { id },
+    });
   }
 }
