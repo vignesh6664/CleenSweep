@@ -69,7 +69,7 @@ export function Dashboard() {
         <HeroStats
           totalSavings={totalPotentialWaste}
           resourcesFound={totalResourcesFound}
-          activeAccounts={accounts?.length || 1}
+          activeAccounts={accounts?.length || 0}
         />
 
         {/* Savings Chart */}

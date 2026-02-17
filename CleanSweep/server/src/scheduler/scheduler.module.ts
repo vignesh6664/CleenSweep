@@ -5,9 +5,10 @@ import { SchedulerController } from './scheduler.controller';
 import { PrismaService } from '../prisma.service';
 import { AwsService } from '../aws/aws.service';
 import { EncryptionService } from '../common/encryption.service';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [NestScheduleModule.forRoot()],
+  imports: [NestScheduleModule.forRoot(), AuthModule],
   controllers: [SchedulerController],
   providers: [SchedulerService, PrismaService, AwsService, EncryptionService],
 })

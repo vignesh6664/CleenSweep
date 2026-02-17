@@ -15,10 +15,10 @@ export class ScannerService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async runScan(accountId: string): Promise<ScanSummary> {
+  async runScan(accountId: string, userId: string): Promise<ScanSummary> {
     try {
       // Call AWS service to scan for orphaned volumes
-      const orphanedVolumes = await this.awsService.scanForWaste(accountId);
+      const orphanedVolumes = await this.awsService.scanForWaste(accountId, userId);
 
       // Save each result to database
       const savedResults: any[] = [];
@@ -59,9 +59,9 @@ export class ScannerService {
     }
   }
 
-  async deleteVolume(accountId: string, region: string, volumeId: string) {
+  async deleteVolume(accountId: string, region: string, volumeId: string, userId: string) {
     // Call AWS service to delete the volume
-    await this.awsService.deleteEbsVolume(accountId, region, volumeId);
+    await this.awsService.deleteEbsVolume(accountId, region, volumeId, userId);
 
     // Delete the corresponding scan result from database
     await this.prisma.scanResult.deleteMany({
@@ -77,10 +77,10 @@ export class ScannerService {
     };
   }
 
-  async getIdleInstances(accountId: string) {
+  async getIdleInstances(accountId: string, userId: string) {
     try {
       // Call AWS service to get idle instances
-      const idleInstances = await this.awsService.getIdleInstances(accountId);
+      const idleInstances = await this.awsService.getIdleInstances(accountId, userId);
       
       return {
         resourcesFound: idleInstances.length,

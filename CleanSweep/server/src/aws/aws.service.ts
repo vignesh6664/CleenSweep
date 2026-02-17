@@ -38,9 +38,9 @@ export class AwsService {
     private readonly encryptionService: EncryptionService,
   ) {}
 
-  async scanForWaste(accountId: string): Promise<OrphanedVolume[]> {
-    const account = await this.prisma.cloudAccount.findUnique({
-      where: { id: accountId },
+  async scanForWaste(accountId: string, userId: string): Promise<OrphanedVolume[]> {
+    const account = await this.prisma.cloudAccount.findFirst({
+      where: { id: accountId, userId },
     });
 
     if (!account) {
@@ -103,10 +103,10 @@ export class AwsService {
     return allOrphanedVolumes;
   }
 
-  async deleteEbsVolume(accountId: string, region: string, volumeId: string): Promise<void> {
+  async deleteEbsVolume(accountId: string, region: string, volumeId: string, userId: string): Promise<void> {
     // Fetch CloudAccount from database
-    const account = await this.prisma.cloudAccount.findUnique({
-      where: { id: accountId },
+    const account = await this.prisma.cloudAccount.findFirst({
+      where: { id: accountId, userId },
     });
 
     if (!account) {
@@ -135,9 +135,9 @@ export class AwsService {
     await ec2Client.send(command);
   }
 
-  async stopInstance(accountId: string, region: string, instanceId: string): Promise<void> {
-    const account = await this.prisma.cloudAccount.findUnique({
-      where: { id: accountId },
+  async stopInstance(accountId: string, region: string, instanceId: string, userId: string): Promise<void> {
+    const account = await this.prisma.cloudAccount.findFirst({
+      where: { id: accountId, userId },
     });
 
     if (!account) {
@@ -161,9 +161,9 @@ export class AwsService {
     await ec2Client.send(command);
   }
 
-  async startInstance(accountId: string, region: string, instanceId: string): Promise<void> {
-    const account = await this.prisma.cloudAccount.findUnique({
-      where: { id: accountId },
+  async startInstance(accountId: string, region: string, instanceId: string, userId: string): Promise<void> {
+    const account = await this.prisma.cloudAccount.findFirst({
+      where: { id: accountId, userId },
     });
 
     if (!account) {
@@ -187,9 +187,9 @@ export class AwsService {
     await ec2Client.send(command);
   }
 
-  async listInstances(accountId: string, region: string) {
-    const account = await this.prisma.cloudAccount.findUnique({
-      where: { id: accountId },
+  async listInstances(accountId: string, region: string, userId: string) {
+    const account = await this.prisma.cloudAccount.findFirst({
+      where: { id: accountId, userId },
     });
 
     if (!account) {
@@ -234,9 +234,9 @@ export class AwsService {
     return instances;
   }
 
-  async getIdleInstances(accountId: string): Promise<IdleInstance[]> {
-    const account = await this.prisma.cloudAccount.findUnique({
-      where: { id: accountId },
+  async getIdleInstances(accountId: string, userId: string): Promise<IdleInstance[]> {
+    const account = await this.prisma.cloudAccount.findFirst({
+      where: { id: accountId, userId },
     });
 
     if (!account) {

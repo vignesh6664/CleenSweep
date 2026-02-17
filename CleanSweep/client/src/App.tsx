@@ -3,13 +3,14 @@ import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-do
 import { useKindeAuth } from '@kinde-oss/kinde-auth-react';
 import { Dashboard } from './pages/Dashboard';
 import { PowerScheduler } from './pages/PowerScheduler';
-import { Toaster } from 'sonner';
-import { LayoutDashboard, Clock, LogIn, LogOut, User } from 'lucide-react';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { setAccessTokenGetter } from './services/api';
+import { Toaster } from 'sonner';
+import { LayoutDashboard, Clock, LogOut, User } from 'lucide-react';
 
 function Navigation() {
   const location = useLocation();
-  const { login, logout, isAuthenticated, isLoading, user, getToken } = useKindeAuth();
+  const { logout, isAuthenticated, isLoading, user, getToken } = useKindeAuth();
   
   // Set up the access token getter for API calls
   useEffect(() => {
@@ -23,6 +24,11 @@ function Navigation() {
   
   const isActive = (path: string) => location.pathname === path;
   
+  // Conditionally render Navigation only when authenticated
+  if (isLoading || !isAuthenticated) {
+    return null;
+  }
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-lg border-b border-slate-700/50">
       <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
@@ -55,31 +61,17 @@ function Navigation() {
         </div>
         
         <div className="flex items-center gap-4">
-          {isLoading ? (
-            <div className="text-slate-400 text-sm">Loading...</div>
-          ) : isAuthenticated ? (
-            <>
-              <div className="flex items-center gap-2 text-slate-300 text-sm">
-                <User className="h-4 w-4" />
-                <span>{user?.email}</span>
-              </div>
-              <button
-                onClick={() => logout()}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
-              >
-                <LogOut className="h-4 w-4" />
-                Logout
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => login()}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-            >
-              <LogIn className="h-4 w-4" />
-              Sign In
-            </button>
-          )}
+          <div className="flex items-center gap-2 text-slate-300 text-sm">
+            <User className="h-4 w-4" />
+            <span>{user?.email}</span>
+          </div>
+          <button
+            onClick={() => logout()}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
+          >
+            <LogOut className="h-4 w-4" />
+            Logout
+          </button>
         </div>
       </div>
     </nav>
@@ -90,10 +82,18 @@ function App() {
   return (
     <BrowserRouter>
       <Navigation />
-      <div className="pt-20">
+      <div className="pt-20 has-[nav]:pt-20">
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/scheduler" element={<PowerScheduler />} />
+          <Route path="/" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/scheduler" element={
+            <ProtectedRoute>
+              <PowerScheduler />
+            </ProtectedRoute>
+          } />
         </Routes>
       </div>
       <Toaster position="top-right" theme="dark" />

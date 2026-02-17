@@ -24,6 +24,9 @@ export class SchedulerService {
       where: {
         isEnabled: true,
       },
+      include: {
+        account: true, // Include account to access userId
+      },
     });
 
     for (const schedule of schedules) {
@@ -37,6 +40,7 @@ export class SchedulerService {
             schedule.accountId,
             schedule.region,
             schedule.instanceId,
+            schedule.account.userId, // Use userId from the related cloud account
           );
           this.logger.log(
             `Successfully stopped instance ${schedule.instanceId}`,
@@ -52,6 +56,7 @@ export class SchedulerService {
             schedule.accountId,
             schedule.region,
             schedule.instanceId,
+            schedule.account.userId,
           );
           this.logger.log(
             `Successfully started instance ${schedule.instanceId}`,
@@ -99,7 +104,16 @@ export class SchedulerService {
     });
   }
 
-  async listSchedules(accountId: string) {
+  async listSchedules(accountId: string, userId: string) {
+    // Ensure the account belongs to the user
+    const account = await this.prisma.cloudAccount.findFirst({
+      where: { id: accountId, userId },
+    });
+    
+    if (!account) {
+      throw new Error('Account not found or access denied');
+    }
+
     return this.prisma.schedule.findMany({
       where: { accountId },
       orderBy: { createdAt: 'desc' },
