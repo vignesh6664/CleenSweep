@@ -2,16 +2,19 @@ model CloudAccount {
   id          String       @id @default(uuid())
   accountName String
   provider    Provider
-  accessKey   String
-  secretKey   String       // Encrypted
+  accessKey   String?
+  secretKey   String? // Encrypted
+  roleArn     String? // For AWS Cross-Account IAM Roles
+  externalId  String? // For AWS Cross-Account IAM Roles
   region      String
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   scanResults ScanResult[]
   schedules   Schedule[]
+  auditLogs   AuditLog[]
 
-  userId      String
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("cloud_accounts")

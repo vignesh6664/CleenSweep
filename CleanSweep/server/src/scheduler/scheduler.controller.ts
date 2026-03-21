@@ -31,6 +31,7 @@ export class SchedulerController {
 
   @Post('schedules')
   async createSchedule(
+    @CurrentUser() user: AuthenticatedUser,
     @Body()
     data: {
       instanceId: string;
@@ -41,11 +42,12 @@ export class SchedulerController {
       timezone: string;
     },
   ) {
-    return this.schedulerService.createSchedule(data);
+    return this.schedulerService.createSchedule(data, user.id);
   }
 
   @Put('schedules/:id')
   async updateSchedule(
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
     @Body()
     data: {
@@ -55,7 +57,7 @@ export class SchedulerController {
       isEnabled?: boolean;
     },
   ) {
-    return this.schedulerService.updateSchedule(id, data);
+    return this.schedulerService.updateSchedule(id, data, user.id);
   }
 
   @Delete('schedules/:id')

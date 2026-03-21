@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
 import { AwsService } from '../aws/aws.service';
+import { SubscriptionService } from '../common/subscription.service';
 
 @Injectable()
 export class SchedulerService {
@@ -10,6 +11,7 @@ export class SchedulerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly awsService: AwsService,
+    private readonly subscription: SubscriptionService,
   ) {}
 
   @Cron(CronExpression.EVERY_MINUTE)
@@ -31,6 +33,13 @@ export class SchedulerService {
 
     for (const schedule of schedules) {
       try {
+        // GTM: Skip automated tasks if user is not PRO
+        const isPro = await this.subscription.isPro(schedule.account.userId);
+        if (!isPro) {
+          this.logger.warn(`Skipping schedule ${schedule.id} for FREE user ${schedule.account.userId}`);
+          continue;
+        }
+
         // Check if it's time to stop the instance
         if (schedule.stopTime === currentTimeUTC) {
           this.logger.log(
@@ -77,7 +86,13 @@ export class SchedulerService {
     stopTime: string;
     startTime: string;
     timezone: string;
-  }) {
+  }, userId: string) {
+    // GTM: Check if user is PRO before allowing schedule creation
+    const isPro = await this.subscription.isPro(userId);
+    if (!isPro) {
+      throw new ForbiddenException('Upgrade to PRO to use automated Power Scheduling');
+    }
+
     return this.prisma.schedule.create({
       data,
     });
@@ -91,7 +106,13 @@ export class SchedulerService {
       timezone?: string;
       isEnabled?: boolean;
     },
+    userId: string,
   ) {
+    const isPro = await this.subscription.isPro(userId);
+    if (!isPro) {
+      throw new ForbiddenException('Upgrade to PRO to use automated Power Scheduling');
+    }
+
     return this.prisma.schedule.update({
       where: { id },
       data,

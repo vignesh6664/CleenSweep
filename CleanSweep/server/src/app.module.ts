@@ -7,10 +7,12 @@ import { AccountsModule } from './accounts/accounts.module';
 import { ScannerModule } from './scanner/scanner.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { AuthModule } from './auth/auth.module';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    CommonModule,
     AuthModule,
     AccountsModule,
     ScannerModule,

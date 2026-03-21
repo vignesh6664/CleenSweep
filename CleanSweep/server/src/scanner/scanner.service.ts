@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { AwsService } from '../aws/aws.service';
 import { PrismaService } from '../prisma.service';
+import { SubscriptionService } from '../common/subscription.service';
 
 export interface ScanSummary {
   totalSavings: number;
@@ -13,6 +14,7 @@ export class ScannerService {
   constructor(
     private readonly awsService: AwsService,
     private readonly prisma: PrismaService,
+    private readonly subscription: SubscriptionService,
   ) {}
 
   async runScan(accountId: string, userId: string): Promise<ScanSummary> {
@@ -60,6 +62,12 @@ export class ScannerService {
   }
 
   async deleteVolume(accountId: string, region: string, volumeId: string, userId: string) {
+    // GTM: Check if user is PRO before allowing deletion
+    const isPro = await this.subscription.isPro(userId);
+    if (!isPro) {
+      throw new ForbiddenException('Upgrade to PRO to delete resources directly from CleanSweep');
+    }
+
     // Call AWS service to delete the volume
     await this.awsService.deleteEbsVolume(accountId, region, volumeId, userId);
 

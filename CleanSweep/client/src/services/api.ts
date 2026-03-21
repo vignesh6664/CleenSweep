@@ -1,7 +1,6 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 // Helper function to get the access token from Kinde
-// This will be called by the Kinde SDK when needed
 let getAccessToken: (() => Promise<string>) | null = null;
 
 export function setAccessTokenGetter(getter: () => Promise<string>) {
@@ -10,10 +9,10 @@ export function setAccessTokenGetter(getter: () => Promise<string>) {
 
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
   const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   };
 
-  // Add authorization header if we have an access token getter
   if (getAccessToken) {
     try {
       const token = await getAccessToken();
@@ -30,15 +29,31 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
     headers,
   });
 
-  // Handle 401 Unauthorized - redirect to login
-  if (response.status === 401) {
-    console.error('Unauthorized - please log in');
-    // The Kinde SDK will handle redirecting to login
-  }
-
   return response;
 }
 
+// User & Billing API
+export async function fetchMe() {
+  const response = await fetchWithAuth(`${API_BASE}/api/me`);
+  if (!response.ok) throw new Error('Failed to fetch user info');
+  return response.json();
+}
+
+export async function upgradeToPro() {
+  const response = await fetchWithAuth(`${API_BASE}/api/upgrade`, {
+    method: 'POST',
+  });
+  if (!response.ok) throw new Error('Failed to upgrade to PRO');
+  return response.json();
+}
+
+export async function fetchAuditLogs() {
+  const response = await fetchWithAuth(`${API_BASE}/api/audit-logs`);
+  if (!response.ok) throw new Error('Failed to fetch audit logs');
+  return response.json();
+}
+
+// Scanner API
 export async function fetchScanResults(accountId: string) {
   const response = await fetchWithAuth(`${API_BASE}/api/scanner/run/${accountId}`);
   if (!response.ok) throw new Error('Failed to fetch scan results');
@@ -54,17 +69,16 @@ export async function fetchAccounts() {
 export interface CreateAccountData {
   accountName: string;
   provider: string;
-  accessKey: string;
-  secretKey: string;
+  accessKey?: string;
+  secretKey?: string;
+  roleArn?: string;
+  externalId?: string;
   region: string;
 }
 
 export async function createAccount(data: CreateAccountData) {
   const response = await fetchWithAuth(`${API_BASE}/api/accounts`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify(data),
   });
   
@@ -124,7 +138,6 @@ export async function createSchedule(data: {
 }) {
   const response = await fetchWithAuth(`${API_BASE}/api/scheduler/schedules`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   
@@ -144,7 +157,6 @@ export async function updateSchedule(id: string, data: {
 }) {
   const response = await fetchWithAuth(`${API_BASE}/api/scheduler/schedules/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   

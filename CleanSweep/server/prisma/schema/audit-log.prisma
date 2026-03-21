@@ -1,0 +1,16 @@
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String // e.g., "DELETE_VOLUME", "STOP_INSTANCE"
+  resourceId String
+  accountId  String
+  userId     String
+  details    Json? // Any extra info
+  createdAt  DateTime @default(now())
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account CloudAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([accountId])
+  @@map("audit_logs")
+}

@@ -1,16 +1,16 @@
 model Schedule {
-  id          String   @id @default(uuid())
-  instanceId  String
-  accountId   String
-  region      String
-  stopTime    String   // HH:mm format in UTC
-  startTime   String   // HH:mm format in UTC
-  timezone    String   // IANA timezone (e.g., "Asia/Kolkata", "Asia/Dubai")
-  isEnabled   Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(uuid())
+  instanceId String
+  accountId  String
+  region     String
+  stopTime   String // HH:mm format in UTC
+  startTime  String // HH:mm format in UTC
+  timezone   String // IANA timezone (e.g., "Asia/Kolkata", "Asia/Dubai")
+  isEnabled  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  account     CloudAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  account CloudAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@index([accountId])
   @@index([isEnabled])

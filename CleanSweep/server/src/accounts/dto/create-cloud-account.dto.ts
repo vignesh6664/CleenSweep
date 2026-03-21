@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, MinLength, Matches, IsEnum } from 'class-validator';
+import { IsString, IsNotEmpty, MinLength, Matches, IsEnum, IsOptional } from 'class-validator';
 
 export class CreateCloudAccountDto {
   @IsString()
@@ -9,17 +9,29 @@ export class CreateCloudAccountDto {
   @IsEnum(['AWS'], { message: 'Provider must be AWS' })
   provider: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @Matches(/^AKIA[A-Z0-9]{16}$/, {
     message: 'Access key must be in valid AWS format (AKIA followed by 16 characters)',
   })
-  accessKey: string;
+  accessKey?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MinLength(40, { message: 'Secret key must be at least 40 characters long' })
-  secretKey: string;
+  secretKey?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^arn:aws:iam::\d{12}:role\/[\w+=,.@-]+$/, {
+    message: 'Role ARN must be a valid AWS IAM Role ARN',
+  })
+  roleArn?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(10, { message: 'External ID must be at least 10 characters long' })
+  externalId?: string;
 
   @IsString()
   @IsNotEmpty()

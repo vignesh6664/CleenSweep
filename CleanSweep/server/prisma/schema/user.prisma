@@ -1,10 +1,13 @@
 model User {
-  id             String         @id
-  email          String         @unique
-  name           String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  cloudAccounts  CloudAccount[]
+  id               String         @id
+  email            String         @unique
+  name             String?
+  stripeCustomerId String?        @unique
+  subscriptionTier String         @default("FREE")
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  cloudAccounts    CloudAccount[]
+  auditLogs        AuditLog[]
 
   @@map("users")
 }

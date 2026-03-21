@@ -11,8 +11,11 @@ import {
   CloudWatchClient,
   GetMetricStatisticsCommand,
 } from '@aws-sdk/client-cloudwatch';
+import { STSClient, AssumeRoleCommand } from '@aws-sdk/client-sts';
 import { PrismaService } from '../prisma.service';
 import { EncryptionService } from '../common/encryption.service';
+import { AuditLogService } from '../common/audit-log.service';
+import { CloudAccount } from '@prisma/client';
 
 
 export interface OrphanedVolume {
@@ -36,7 +39,80 @@ export class AwsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly encryptionService: EncryptionService,
+    private readonly auditLog: AuditLogService,
   ) {}
+
+  private async getCredentials(account: CloudAccount) {
+    if (account.roleArn && account.externalId) {
+      // Use STS AssumeRole
+      const stsClient = new STSClient({ region: 'us-east-1' });
+      const command = new AssumeRoleCommand({
+        RoleArn: account.roleArn,
+        ExternalId: account.externalId,
+        RoleSessionName: 'CleanSweepSession',
+      });
+
+      const response = await stsClient.send(command);
+
+      if (!response.Credentials) {
+        throw new Error('Failed to assume role: No credentials returned');
+      }
+
+      return {
+        accessKeyId: response.Credentials.AccessKeyId!,
+        secretAccessKey: response.Credentials.SecretAccessKey!,
+        sessionToken: response.Credentials.SessionToken!,
+      };
+    } else if (account.accessKey && account.secretKey) {
+      // Use legacy Access Keys
+      const decryptedSecretKey = this.encryptionService.decrypt(account.secretKey);
+      return {
+        accessKeyId: account.accessKey,
+        secretAccessKey: decryptedSecretKey,
+      };
+    } else {
+      throw new Error('Account has no valid credentials (missing keys or role info)');
+    }
+  }
+
+  async validateAccount(accountData: Partial<CloudAccount>): Promise<boolean> {
+    try {
+      let credentials;
+      if (accountData.roleArn && accountData.externalId) {
+        const stsClient = new STSClient({ region: 'us-east-1' });
+        const command = new AssumeRoleCommand({
+          RoleArn: accountData.roleArn,
+          ExternalId: accountData.externalId,
+          RoleSessionName: 'CleanSweepValidation',
+        });
+        const response = await stsClient.send(command);
+        credentials = {
+          accessKeyId: response.Credentials?.AccessKeyId!,
+          secretAccessKey: response.Credentials?.SecretAccessKey!,
+          sessionToken: response.Credentials?.SessionToken!,
+        };
+      } else if (accountData.accessKey && accountData.secretKey) {
+        // For validation, we might receive unencrypted secret key
+        credentials = {
+          accessKeyId: accountData.accessKey,
+          secretAccessKey: accountData.secretKey,
+        };
+      } else {
+        return false;
+      }
+
+      const ec2Client = new EC2Client({
+        region: accountData.region || 'us-east-1',
+        credentials,
+      });
+
+      await ec2Client.send(new DescribeVolumesCommand({ MaxResults: 5 }));
+      return true;
+    } catch (error) {
+      console.error('Account validation failed:', error.message);
+      return false;
+    }
+  }
 
   async scanForWaste(accountId: string, userId: string): Promise<OrphanedVolume[]> {
     const account = await this.prisma.cloudAccount.findFirst({
@@ -47,12 +123,8 @@ export class AwsService {
       throw new Error(`Account with ID ${accountId} not found`);
     }
 
-    // Decrypt AWS credentials
-    const decryptedSecretKey = this.encryptionService.decrypt(
-      account.secretKey,
-    );
+    const credentials = await this.getCredentials(account);
 
-    // List of AWS regions to scan
     const regionsToScan = [
       'us-east-1',
       'us-west-2',
@@ -65,15 +137,11 @@ export class AwsService {
 
     const allOrphanedVolumes: OrphanedVolume[] = [];
 
-    // Scan each region for orphaned volumes
     for (const region of regionsToScan) {
       try {
         const ec2Client = new EC2Client({
           region: region,
-          credentials: {
-            accessKeyId: account.accessKey,
-            secretAccessKey: decryptedSecretKey,
-          },
+          credentials,
         });
 
         const command = new DescribeVolumesCommand({});
@@ -83,7 +151,7 @@ export class AwsService {
           for (const volume of response.Volumes) {
             if (volume.State === 'available') {
               const sizeGb = volume.Size || 0;
-              const monthlyCost = sizeGb * 0.1; // $0.10 per GB per month
+              const monthlyCost = sizeGb * 0.1;
 
               allOrphanedVolumes.push({
                 resourceId: volume.VolumeId || 'unknown',
@@ -95,7 +163,6 @@ export class AwsService {
           }
         }
       } catch (error) {
-        // Log error for this region but continue scanning other regions
         console.error(`Error scanning region ${region}:`, error.message);
       }
     }
@@ -104,111 +171,80 @@ export class AwsService {
   }
 
   async deleteEbsVolume(accountId: string, region: string, volumeId: string, userId: string): Promise<void> {
-    // Fetch CloudAccount from database
     const account = await this.prisma.cloudAccount.findFirst({
       where: { id: accountId, userId },
     });
 
-    if (!account) {
-      throw new Error(`Account with ID ${accountId} not found`);
-    }
+    if (!account) throw new Error(`Account not found`);
 
-    // Decrypt AWS credentials
-    const decryptedSecretKey = this.encryptionService.decrypt(
-      account.secretKey,
-    );
+    const credentials = await this.getCredentials(account);
 
-    // Create EC2 client with decrypted credentials for the specified region
-    const ec2Client = new EC2Client({
-      region: region,
-      credentials: {
-        accessKeyId: account.accessKey,
-        secretAccessKey: decryptedSecretKey,
-      },
+    const ec2Client = new EC2Client({ region, credentials });
+
+    await ec2Client.send(new DeleteVolumeCommand({ VolumeId: volumeId }));
+    
+    // Log the action
+    await this.auditLog.log({
+      action: 'DELETE_EBS_VOLUME',
+      resourceId: volumeId,
+      accountId,
+      userId,
+      details: { region, timestamp: new Date() },
     });
-
-    // Execute DeleteVolume command
-    const command = new DeleteVolumeCommand({
-      VolumeId: volumeId,
-    });
-
-    await ec2Client.send(command);
   }
 
   async stopInstance(accountId: string, region: string, instanceId: string, userId: string): Promise<void> {
     const account = await this.prisma.cloudAccount.findFirst({
       where: { id: accountId, userId },
     });
+    if (!account) throw new Error(`Account not found`);
 
-    if (!account) {
-      throw new Error(`Account with ID ${accountId} not found`);
-    }
+    const credentials = await this.getCredentials(account);
+    const ec2Client = new EC2Client({ region, credentials });
 
-    const decryptedSecretKey = this.encryptionService.decrypt(account.secretKey);
-
-    const ec2Client = new EC2Client({
-      region: region,
-      credentials: {
-        accessKeyId: account.accessKey,
-        secretAccessKey: decryptedSecretKey,
-      },
+    await ec2Client.send(new StopInstancesCommand({ InstanceIds: [instanceId] }));
+    
+    // Log the action
+    await this.auditLog.log({
+      action: 'STOP_INSTANCE',
+      resourceId: instanceId,
+      accountId,
+      userId,
+      details: { region, timestamp: new Date() },
     });
-
-    const command = new StopInstancesCommand({
-      InstanceIds: [instanceId],
-    });
-
-    await ec2Client.send(command);
   }
 
   async startInstance(accountId: string, region: string, instanceId: string, userId: string): Promise<void> {
     const account = await this.prisma.cloudAccount.findFirst({
       where: { id: accountId, userId },
     });
+    if (!account) throw new Error(`Account not found`);
 
-    if (!account) {
-      throw new Error(`Account with ID ${accountId} not found`);
-    }
+    const credentials = await this.getCredentials(account);
+    const ec2Client = new EC2Client({ region, credentials });
 
-    const decryptedSecretKey = this.encryptionService.decrypt(account.secretKey);
-
-    const ec2Client = new EC2Client({
-      region: region,
-      credentials: {
-        accessKeyId: account.accessKey,
-        secretAccessKey: decryptedSecretKey,
-      },
+    await ec2Client.send(new StartInstancesCommand({ InstanceIds: [instanceId] }));
+    
+    // Log the action
+    await this.auditLog.log({
+      action: 'START_INSTANCE',
+      resourceId: instanceId,
+      accountId,
+      userId,
+      details: { region, timestamp: new Date() },
     });
-
-    const command = new StartInstancesCommand({
-      InstanceIds: [instanceId],
-    });
-
-    await ec2Client.send(command);
   }
 
   async listInstances(accountId: string, region: string, userId: string) {
     const account = await this.prisma.cloudAccount.findFirst({
       where: { id: accountId, userId },
     });
+    if (!account) throw new Error(`Account not found`);
 
-    if (!account) {
-      throw new Error(`Account with ID ${accountId} not found`);
-    }
+    const credentials = await this.getCredentials(account);
+    const ec2Client = new EC2Client({ region, credentials });
 
-    const decryptedSecretKey = this.encryptionService.decrypt(account.secretKey);
-
-    const ec2Client = new EC2Client({
-      region: region,
-      credentials: {
-        accessKeyId: account.accessKey,
-        secretAccessKey: decryptedSecretKey,
-      },
-    });
-
-    const command = new DescribeInstancesCommand({});
-    const response = await ec2Client.send(command);
-
+    const response = await ec2Client.send(new DescribeInstancesCommand({}));
     const instances: any[] = [];
 
     if (response.Reservations) {
@@ -230,7 +266,6 @@ export class AwsService {
         }
       }
     }
-
     return instances;
   }
 
@@ -238,16 +273,10 @@ export class AwsService {
     const account = await this.prisma.cloudAccount.findFirst({
       where: { id: accountId, userId },
     });
+    if (!account) throw new Error(`Account not found`);
 
-    if (!account) {
-      throw new Error(`Account with ID ${accountId} not found`);
-    }
+    const credentials = await this.getCredentials(account);
 
-    const decryptedSecretKey = this.encryptionService.decrypt(
-      account.secretKey,
-    );
-
-    // List of AWS regions to scan (same as volume scanner)
     const regionsToScan = [
       'us-east-1',
       'us-west-2',
@@ -260,33 +289,13 @@ export class AwsService {
 
     const allIdleInstances: IdleInstance[] = [];
 
-    // Scan each region for idle instances
     for (const region of regionsToScan) {
       try {
-        const ec2Client = new EC2Client({
-          region: region,
-          credentials: {
-            accessKeyId: account.accessKey,
-            secretAccessKey: decryptedSecretKey,
-          },
-        });
+        const ec2Client = new EC2Client({ region, credentials });
+        const cloudWatchClient = new CloudWatchClient({ region, credentials });
 
-        const cloudWatchClient = new CloudWatchClient({
-          region: region,
-          credentials: {
-            accessKeyId: account.accessKey,
-            secretAccessKey: decryptedSecretKey,
-          },
-        });
-
-        // Get all running instances in this region
         const describeCommand = new DescribeInstancesCommand({
-          Filters: [
-            {
-              Name: 'instance-state-name',
-              Values: ['running'],
-            },
-          ],
+          Filters: [{ Name: 'instance-state-name', Values: ['running'] }],
         });
         const instancesResponse = await ec2Client.send(describeCommand);
 
@@ -297,7 +306,6 @@ export class AwsService {
                 const instanceId = instance.InstanceId;
                 if (!instanceId) continue;
 
-                // Get CPU metrics for the last 7 days
                 const endTime = new Date();
                 const startTime = new Date();
                 startTime.setDate(startTime.getDate() - 7);
@@ -305,46 +313,26 @@ export class AwsService {
                 const metricsCommand = new GetMetricStatisticsCommand({
                   Namespace: 'AWS/EC2',
                   MetricName: 'CPUUtilization',
-                  Dimensions: [
-                    {
-                      Name: 'InstanceId',
-                      Value: instanceId,
-                    },
-                  ],
+                  Dimensions: [{ Name: 'InstanceId', Value: instanceId }],
                   StartTime: startTime,
                   EndTime: endTime,
-                  Period: 3600, // 1 hour periods
+                  Period: 3600,
                   Statistics: ['Average'],
                 });
 
-                const metricsResponse = await cloudWatchClient.send(
-                  metricsCommand,
-                );
+                const metricsResponse = await cloudWatchClient.send(metricsCommand);
 
-                // Calculate average CPU utilization
                 let avgCpu = 0;
-                if (
-                  metricsResponse.Datapoints &&
-                  metricsResponse.Datapoints.length > 0
-                ) {
-                  const sum = metricsResponse.Datapoints.reduce(
-                    (acc, dp) => acc + (dp.Average || 0),
-                    0,
-                  );
+                if (metricsResponse.Datapoints && metricsResponse.Datapoints.length > 0) {
+                  const sum = metricsResponse.Datapoints.reduce((acc, dp) => acc + (dp.Average || 0), 0);
                   avgCpu = sum / metricsResponse.Datapoints.length;
                 }
 
-                // Only include instances with avg CPU < 5%
                 if (avgCpu < 5) {
-                  // Get instance name from tags
                   const nameTag = instance.Tags?.find((tag) => tag.Key === 'Name');
                   const instanceName = nameTag?.Value || 'Unnamed';
-
-                  // Calculate monthly cost (simplified pricing)
                   const instanceType = instance.InstanceType || 't2.micro';
-                  const monthlyCost = this.calculateInstanceMonthlyCost(
-                    instanceType,
-                  );
+                  const monthlyCost = this.calculateInstanceMonthlyCost(instanceType);
 
                   allIdleInstances.push({
                     instanceId,
@@ -360,38 +348,20 @@ export class AwsService {
           }
         }
       } catch (error) {
-        // Log error for this region but continue scanning other regions
-        console.error(
-          `Error scanning region ${region} for idle instances:`,
-          error.message,
-        );
+        console.error(`Error scanning region ${region} for idle instances:`, error.message);
       }
     }
-
     return allIdleInstances;
   }
 
-  // Helper method to calculate approximate monthly cost based on instance type
   private calculateInstanceMonthlyCost(instanceType: string): number {
-    // Simplified pricing (approximate on-demand pricing per month)
     const pricing: Record<string, number> = {
-      't2.micro': 8.5,
-      't2.small': 17,
-      't2.medium': 34,
-      't2.large': 68,
-      't3.micro': 7.5,
-      't3.small': 15,
-      't3.medium': 30,
-      't3.large': 60,
-      'm5.large': 70,
-      'm5.xlarge': 140,
-      'm5.2xlarge': 280,
-      'c5.large': 62,
-      'c5.xlarge': 124,
-      'r5.large': 91,
-      'r5.xlarge': 182,
+      't2.micro': 8.5, 't2.small': 17, 't2.medium': 34, 't2.large': 68,
+      't3.micro': 7.5, 't3.small': 15, 't3.medium': 30, 't3.large': 60,
+      'm5.large': 70, 'm5.xlarge': 140, 'm5.2xlarge': 280,
+      'c5.large': 62, 'c5.xlarge': 124,
+      'r5.large': 91, 'r5.xlarge': 182,
     };
-
-    return pricing[instanceType] || 50; // Default to $50 if type not found
+    return pricing[instanceType] || 50;
   }
 }

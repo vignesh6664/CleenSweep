@@ -12,15 +12,18 @@ export class AccountsService {
   ) {}
 
   async create(createCloudAccountDto: CreateCloudAccountDto, userId: string) {
-    const encryptedSecretKey = this.encryptionService.encrypt(
-      createCloudAccountDto.secretKey,
-    );
+    const { secretKey, ...rest } = createCloudAccountDto;
+    
+    let encryptedSecretKey: string | undefined = undefined;
+    if (secretKey) {
+      encryptedSecretKey = this.encryptionService.encrypt(secretKey);
+    }
 
     return this.prisma.cloudAccount.create({
       data: {
-        ...createCloudAccountDto,
+        ...rest,
         secretKey: encryptedSecretKey,
-        provider: createCloudAccountDto.provider as Provider,
+        provider: rest.provider as Provider,
         userId,
       },
     });
