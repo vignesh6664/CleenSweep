@@ -8,10 +8,15 @@ import { ScannerModule } from './scanner/scanner.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { AuthModule } from './auth/auth.module';
 import { CommonModule } from './common/common.module';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot([{
+      ttl: 60000, // 1 minute
+      limit: 10,  // Max 10 requests per minute per IP
+    }]),
     CommonModule,
     AuthModule,
     AccountsModule,

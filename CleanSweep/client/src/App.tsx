@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { useKindeAuth } from '@kinde-oss/kinde-auth-react';
 import { Dashboard } from './pages/Dashboard';
+import { Landing } from './pages/Landing';
 import { PowerScheduler } from './pages/PowerScheduler';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { setAccessTokenGetter } from './services/api';
@@ -16,7 +17,6 @@ function Navigation() {
   const { logout, isAuthenticated, isLoading, user: kindeUser, getToken } = useKindeAuth();
   const { data: userData, upgrade } = useMe();
   
-  // Set up the access token getter for API calls
   useEffect(() => {
     if (isAuthenticated) {
       setAccessTokenGetter(async () => {
@@ -29,8 +29,8 @@ function Navigation() {
   const isActive = (path: string) => location.pathname === path;
   const isPro = userData?.subscriptionTier === 'PRO';
   
-  // Conditionally render Navigation only when authenticated
-  if (isLoading || !isAuthenticated) {
+  // Hide navigation on landing page or when not authenticated
+  if (isLoading || !isAuthenticated || location.pathname === '/') {
     return null;
   }
 
@@ -38,15 +38,15 @@ function Navigation() {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-lg border-b border-slate-700/50">
       <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <div className="flex flex-col">
+          <Link to="/" className="flex flex-col">
             <h2 className="text-xl font-bold text-slate-100 leading-none">CleanSweep</h2>
-            <span className="text-[10px] text-indigo-400 font-medium tracking-widest mt-1">FINOPS ENGINE</span>
-          </div>
+            <span className="text-[10px] text-indigo-400 font-medium tracking-widest mt-1 uppercase">FinOps Engine</span>
+          </Link>
           <div className="flex gap-2">
             <Link
-              to="/"
+              to="/dashboard"
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                isActive('/')
+                isActive('/dashboard')
                   ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
               }`}
@@ -110,20 +110,21 @@ function App() {
   return (
     <BrowserRouter>
       <Navigation />
-      <div className="pt-20">
-        <Routes>
-          <Route path="/" element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/scheduler" element={
-            <ProtectedRoute>
-              <PowerScheduler />
-            </ProtectedRoute>
-          } />
-        </Routes>
-      </div>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <div className="pt-20"><Dashboard /></div>
+          </ProtectedRoute>
+        } />
+        <Route path="/scheduler" element={
+          <ProtectedRoute>
+            <div className="pt-20"><PowerScheduler /></div>
+          </ProtectedRoute>
+        } />
+        {/* Redirect any other authenticated routes to dashboard */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
       <Toaster position="bottom-right" theme="dark" closeButton richColors />
     </BrowserRouter>
   );
