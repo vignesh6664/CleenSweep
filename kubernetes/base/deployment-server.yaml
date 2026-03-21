@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cleansweep-server
+  labels:
+    app: cleansweep-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cleansweep-server
+  template:
+    metadata:
+      labels:
+        app: cleansweep-server
+    spec:
+      containers:
+        - name: server
+          image: cleansweep-server:latest # This gets overridden by Kustomize per environment
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: cleansweep-secrets # Maps to K8s secret containing DATABASE_URL, etc.
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          # Interview Highlight: Always include health checks (Probes)
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10

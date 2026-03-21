@@ -29,6 +29,33 @@ CleanSweep is a powerful **FinOps dashboard** designed to detect, visualize, and
 - **Visual Analytics**: Beautiful charts and graphs showing total savings and resource distribution.
 - **Real-time Actions**: Delete zombie resources or stop idle instances directly from the UI.
 
+## 🚀 DevOps Engineering Showcase
+
+This project is built with a **Production-First** DevOps mindset, moving beyond simple code to a complete, automated, and secure infrastructure lifecycle.
+
+### 🏗️ Infrastructure as Code (Terraform)
+- **Zero-Trust Networking**: Implemented a modular VPC architecture with isolated **Private Subnets** for the Database and Backend.
+- **NAT Gateway Integration**: Secure outbound-only internet access for private resources, preventing direct exposure to the public web.
+- **RDS & ECS Modules**: Fully automated provisioning of Amazon RDS (PostgreSQL) and ECS (Fargate) using reusable Terraform modules.
+- **State Management**: Configured S3 remote state storage with **DynamoDB State Locking** for safe, collaborative infrastructure management.
+
+### ⚡ Continuous Integration & Security (GitHub Actions)
+- **Shift-Left Security**: Integrated **Trivy Vulnerability Scanning** directly into the CI pipeline. The build **fails automatically** if CRITICAL security vulnerabilities are detected in the Docker images.
+- **Advanced Caching**: Optimized pipeline speed by using GitHub Actions caching for npm dependencies and **Docker Layer Caching** (`type=gha`), reducing build times by ~40%.
+- **Multi-Stage Builds**: Dockerfiles are optimized to produce minimal, hardened production images by stripping out build-time dependencies.
+
+### ☸️ Container Orchestration (Kubernetes)
+- **GitOps Ready**: Organized manifests using **Kustomize**, allowing for clean environment overlays (Dev/Prod) without YAML duplication.
+- **Self-Healing Infrastructure**: Configured **Liveness and Readiness Probes** to ensure the orchestrator automatically restarts unhealthy containers.
+- **Ingress Control**: Implemented path-based routing (Layer 7) using an Nginx Ingress Controller to manage traffic flow between the React frontend and NestJS API.
+
+### 📊 Observability & Monitoring (L.G.P. Stack)
+- **Metrics (Prometheus)**: Automated scraping of application and system-level metrics.
+- **Logging (Loki & Promtail)**: Centralized log aggregation for real-time troubleshooting without SSH-ing into containers.
+- **Visualization (Grafana)**: Pre-configured dashboards for a unified "single pane of glass" view of the entire system health.
+
+---
+
 ## 🛠️ Technology Stack
 
 **Frontend:**

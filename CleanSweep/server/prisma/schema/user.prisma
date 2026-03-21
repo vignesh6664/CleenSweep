@@ -1,11 +1,10 @@
 model User {
-  id        String   @id // Kinde user ID
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  accounts  CloudAccount[]
+  id             String         @id
+  email          String         @unique
+  name           String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  cloudAccounts  CloudAccount[]
 
   @@map("users")
 }

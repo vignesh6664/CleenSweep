@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: cleansweep-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: cleansweep
+      POSTGRES_PASSWORD: cleansweep_password
+      POSTGRES_DB: cleansweep_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cleansweep -d cleansweep_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: ./CleanSweep/server
+      dockerfile: Dockerfile
+      target: development
+    container_name: cleansweep-server
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      # Override the DB URL to point to the docker container instead of localhost
+      - DATABASE_URL=postgresql://cleansweep:cleansweep_password@postgres:5432/cleansweep_db?schema=public
+    env_file:
+      - ./CleanSweep/server/.env
+    volumes:
+      - ./CleanSweep/server/src:/usr/src/app/src
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ./CleanSweep/client
+      dockerfile: Dockerfile
+      target: production
+    container_name: cleansweep-client
+    ports:
+      - "5173:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  # --- OBSERVABILITY STACK ---
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: cleansweep-prometheus
+    volumes:
+      - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: cleansweep-node-exporter
+    ports:
+      - "9100:9100"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: cleansweep-grafana
+    volumes:
+      - ./infrastructure/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+      - loki
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:latest
+    container_name: cleansweep-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: cleansweep-promtail
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./infrastructure/monitoring/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml
+    command: -config.file=/etc/promtail/promtail-config.yml
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

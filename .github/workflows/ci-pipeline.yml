@@ -1,0 +1,111 @@
+name: CleanSweep CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "mainn" ]
+  pull_request:
+    branches: [ "mainn" ]
+
+jobs:
+  backend-checks:
+    name: Backend Lint & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./CleanSweep/server
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: './CleanSweep/server/package-lock.json'
+          
+      - name: Install Dependencies
+        run: npm ci
+        
+      - name: Run Linter
+        run: npm run lint
+        
+      - name: Run Unit Tests
+        run: npm run test
+
+  frontend-checks:
+    name: Frontend Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./CleanSweep/client
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: './CleanSweep/client/package-lock.json'
+          
+      - name: Install Dependencies
+        run: npm ci
+        
+      - name: Run Linter
+        run: npm run lint
+
+  docker-build-and-scan:
+    name: Docker Build & Security Scan
+    needs: [backend-checks, frontend-checks]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Backend Build & Scan with Cache
+      - name: Build and Cache Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./CleanSweep/server
+          file: ./CleanSweep/server/Dockerfile
+          target: production
+          push: false
+          load: true
+          tags: cleansweep-server:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy Backend (Fail on Critical)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'cleansweep-server:latest'
+          format: 'table'
+          exit-code: '1' # Fail the pipeline if a critical vulnerability is found
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'
+
+      # Frontend Build & Scan with Cache
+      - name: Build and Cache Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./CleanSweep/client
+          file: ./CleanSweep/client/Dockerfile
+          target: production
+          push: false
+          load: true
+          tags: cleansweep-client:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy Frontend (Fail on Critical)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'cleansweep-client:latest'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'

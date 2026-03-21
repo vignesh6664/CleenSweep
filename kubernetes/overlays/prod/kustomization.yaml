@@ -1,0 +1,11 @@
+resources:
+  - ../../base
+
+namePrefix: prod-
+
+# This automatically updates the generic image tag in the base deployment 
+# to a specific version (e.g., a git SHA) for production
+images:
+  - name: cleansweep-server
+    newName: ghcr.io/yourusername/cleansweep-server
+    newTag: v1.0.0

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cleansweep-server-svc
+spec:
+  selector:
+    app: cleansweep-server
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+  type: ClusterIP # Internal routing only. Ingress handles external access.

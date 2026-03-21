@@ -1,0 +1,6 @@
+resources:
+  - deployment-server.yaml
+  - service-server.yaml
+  - deployment-client.yaml
+  - service-client.yaml
+  - ingress.yaml

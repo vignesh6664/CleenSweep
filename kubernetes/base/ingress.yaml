@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cleansweep-ingress
+  annotations:
+    # Tell K8s to use NGINX Ingress Controller
+    kubernetes.io/ingress.class: nginx
+    # Optional: SSL/TLS setup (Interview Pro-Tip: Mention cert-manager)
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  rules:
+    - host: app.cleansweep.com # In a real dev environment, you'd use a local host or dynamic DNS
+      http:
+        paths:
+          # Route API requests to the backend service
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: cleansweep-server-svc
+                port:
+                  number: 80
+          # Route all other requests to the frontend (Nginx)
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: cleansweep-client-svc
+                port:
+                  number: 80

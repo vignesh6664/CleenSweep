@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'cleansweep-server'
+    static_configs:
+      - targets: ['server:3000'] # Scrapes the NestJS app (if metrics are enabled)
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100'] # Scrapes system-level metrics
