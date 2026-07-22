@@ -1,0 +1,33 @@
+# Total resource limit for the entire CleanSweep namespace
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: cleansweep-quota
+spec:
+  hard:
+    requests.cpu: "1"        # Total requested CPU cannot exceed 1 core
+    requests.memory: 2Gi     # Total requested RAM cannot exceed 2GB
+    limits.cpu: "2"          # Hard limit of 2 cores total
+    limits.memory: 4Gi       # Hard limit of 4GB RAM total
+    pods: "10"               # Max 10 pods allowed in this namespace
+---
+# Default constraints for every container in the namespace
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: cleansweep-limits
+spec:
+  limits:
+  - default:                # Default LIMITS if a developer forgets
+      cpu: 500m
+      memory: 512Mi
+    defaultRequest:         # Default REQUESTS if a developer forgets
+      cpu: 100m
+      memory: 128Mi
+    max:                    # Maximum a single container can EVER ask for
+      cpu: "1"
+      memory: 1Gi
+    min:                    # Minimum a single container must ask for
+      cpu: 10m
+      memory: 64Mi
+    type: Container

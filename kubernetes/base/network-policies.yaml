@@ -1,0 +1,45 @@
+# 1. DEFAULT DENY: Block all traffic by default (Zero Trust)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+spec:
+  podSelector: {} # Selects all pods in the namespace
+  policyTypes:
+  - Ingress
+---
+# 2. ALLOW FRONTEND: Only allow traffic from the Ingress Controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-from-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app: cleansweep-client
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx # Common label for Ingress Controllers
+    ports:
+    - protocol: TCP
+      port: 80
+---
+# 3. ALLOW BACKEND: Only allow traffic from the Frontend
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-from-frontend
+spec:
+  podSelector:
+    matchLabels:
+      app: cleansweep-server
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: cleansweep-client
+    ports:
+    - protocol: TCP
+      port: 3000

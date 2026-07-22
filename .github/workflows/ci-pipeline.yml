@@ -54,9 +54,52 @@ jobs:
       - name: Run Linter
         run: npm run lint
 
+  terraform-security-scan:
+    name: Terraform Security Scan (Checkov)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: infrastructure/terraform
+          framework: terraform
+          # soft_fail: true # Set to true if you don't want to break the build, but for 'Full Power' we keep it false
+          output_format: cli
+          quiet: true # Only show failed checks
+
+  database-migrations:
+    name: Database Migration (Pre-Deploy)
+    needs: [backend-checks] # Only migrate if tests pass
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./CleanSweep/server
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: './CleanSweep/server/package-lock.json'
+
+      - name: Install Dependencies (Prisma only)
+        run: npm ci
+
+      - name: Run Production Migration
+        env:
+          # In a real setup, this comes from GitHub Secrets
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx prisma migrate deploy
+        # Senior Tip: If DATABASE_URL is missing, this step will fail safely
+        # preventing an 'un-migrated' app from deploying.
+
   docker-build-and-scan:
     name: Docker Build & Security Scan
-    needs: [backend-checks, frontend-checks]
+    needs: [database-migrations, frontend-checks]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

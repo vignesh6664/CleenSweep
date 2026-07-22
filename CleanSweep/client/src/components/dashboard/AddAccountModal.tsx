@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
@@ -19,9 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, HelpCircle, ExternalLink, ShieldCheck, Key, Info, Copy, Cloud } from 'lucide-react';
+import { Loader2, Plus, HelpCircle, ExternalLink, ShieldCheck, Key, Info, Copy, Cloud, Check, AlertTriangle } from 'lucide-react';
 import { useCreateAccount } from '@/hooks/useCreateAccount';
 import { toast } from 'sonner';
 
@@ -33,6 +32,7 @@ const AWS_REGIONS = [
   { value: 'eu-west-1', label: 'Europe (Ireland)' },
   { value: 'eu-central-1', label: 'Europe (Frankfurt)' },
   { value: 'ap-south-1', label: 'Asia Pacific (Mumbai)' },
+  { value: 'ap-south-2', label: 'Asia Pacific (Hyderabad)' },
   { value: 'ap-southeast-1', label: 'Asia Pacific (Singapore)' },
   { value: 'ap-southeast-2', label: 'Asia Pacific (Sydney)' },
 ];
@@ -67,14 +67,15 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
   const [generatedExternalId, setGeneratedExternalId] = useState('');
 
   useEffect(() => {
-    if (open && !generatedExternalId) {
+    if (open) {
       setGeneratedExternalId(Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15));
     }
-  }, [open, generatedExternalId]);
+  }, [open]);
 
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
     setValue,
     reset,
@@ -82,6 +83,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
     resolver: zodResolver(accountSchema),
     defaultValues: {
       provider: 'AWS',
+      region: '',
     },
   });
 
@@ -131,38 +133,41 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
               Connect Cloud Account
             </DialogTitle>
             <DialogDescription className="text-slate-500 font-medium text-base pt-1">
-              Securely integrate your AWS environment with CleanSweep.
+              Select a method to integrate your AWS environment.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Connection Method Toggle */}
-            <div className="group relative">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-2xl blur opacity-0 group-hover:opacity-100 transition duration-500" />
-              <div className="relative flex items-center justify-between p-4 bg-slate-900 border border-slate-800 rounded-2xl">
-                <div className="flex items-center gap-4">
-                  <div className={`p-2.5 rounded-xl transition-colors duration-300 ${useIamRole ? 'bg-indigo-500/10 text-indigo-400' : 'bg-amber-500/10 text-amber-400'}`}>
-                    {useIamRole ? <ShieldCheck className="w-5 h-5" /> : <Key className="w-5 h-5" />}
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-white">
-                      {useIamRole ? 'IAM Role Authentication' : 'Access Key Integration'}
-                    </p>
-                    <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
-                      {useIamRole ? 'Secure Zero-Trust Method' : 'Legacy Connection Method'}
-                    </p>
-                  </div>
-                </div>
-                <Switch 
-                  checked={useIamRole} 
-                  onCheckedChange={setUseIamRole}
-                  className="data-[state=checked]:bg-indigo-600 border-slate-700"
-                />
-              </div>
-            </div>
+          <div className="grid grid-cols-2 gap-3 p-1.5 bg-slate-900 border border-slate-800 rounded-2xl mb-8">
+            <button
+              type="button"
+              onClick={() => setUseIamRole(true)}
+              className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl transition-all duration-300 font-bold text-[11px] uppercase tracking-wider ${
+                useIamRole 
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40 scale-[1.02]' 
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              <ShieldCheck className={`w-4 h-4 ${useIamRole ? 'text-white' : 'text-slate-600'}`} />
+              IAM Role
+              {useIamRole && <Check className="w-3 h-3 ml-auto" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setUseIamRole(false)}
+              className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl transition-all duration-300 font-bold text-[11px] uppercase tracking-wider ${
+                !useIamRole 
+                  ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/40 scale-[1.02]' 
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              <Key className={`w-4 h-4 ${!useIamRole ? 'text-white' : 'text-slate-600'}`} />
+              Access Keys
+              {!useIamRole && <Check className="w-3 h-3 ml-auto" />}
+            </button>
+          </div>
 
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Account Name */}
               <div className="space-y-2">
                 <Label htmlFor="accountName" className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
                   Friendly Name
@@ -171,30 +176,35 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                   id="accountName"
                   placeholder="e.g. Production AWS"
                   {...register('accountName')}
-                  className="bg-slate-900 border-slate-800 text-slate-200 h-11 focus:ring-indigo-500/20 focus:border-indigo-500/50 rounded-xl"
+                  className="bg-slate-900 border-slate-800 text-slate-200 h-11 focus:ring-indigo-500/20 focus:border-indigo-500/50 rounded-xl placeholder:text-slate-700"
                 />
                 {errors.accountName && (
                   <p className="text-[10px] font-bold text-red-400 ml-1">{errors.accountName.message}</p>
                 )}
               </div>
 
-              {/* Region */}
               <div className="space-y-2">
                 <Label htmlFor="region" className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
                   Primary Region
                 </Label>
-                <Select onValueChange={(value) => setValue('region', value)}>
-                  <SelectTrigger className="bg-slate-900 border-slate-800 text-slate-200 h-11 focus:ring-indigo-500/20 focus:border-indigo-500/50 rounded-xl">
-                    <SelectValue placeholder="Select region" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-300">
-                    {AWS_REGIONS.map((region) => (
-                      <SelectItem key={region.value} value={region.value}>
-                        {region.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Controller
+                  name="region"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className="bg-slate-900 border-slate-800 text-slate-200 h-11 focus:ring-indigo-500/20 focus:border-indigo-500/50 rounded-xl">
+                        <SelectValue placeholder="Select region" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-300">
+                        {AWS_REGIONS.map((region) => (
+                          <SelectItem key={region.value} value={region.value}>
+                            {region.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 {errors.region && (
                   <p className="text-[10px] font-bold text-red-400 ml-1">{errors.region.message}</p>
                 )}
@@ -209,9 +219,9 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                       <Info className="w-3.5 h-3.5 text-indigo-400" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-indigo-200">How to connect</p>
+                      <p className="text-xs font-bold text-indigo-200">How to connect (Recommended)</p>
                       <p className="text-[11px] text-indigo-300/70 mt-1 leading-relaxed">
-                        We recommend using our CloudFormation template to create a limited-access role in your account.
+                        The most secure way to connect. Use our CloudFormation template to create a limited-access role.
                       </p>
                     </div>
                   </div>
@@ -219,11 +229,11 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                   <Button 
                     type="button" 
                     variant="outline" 
-                    className="w-full bg-indigo-600 text-white hover:bg-indigo-700 border-none h-10 rounded-xl flex items-center gap-2 font-bold text-xs"
+                    className="w-full bg-indigo-600 text-white hover:bg-indigo-700 border-none h-10 rounded-xl flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-widest"
                     onClick={() => window.open(cloudFormationUrl, '_blank')}
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
-                    Launch CloudFormation Template
+                    Launch Template
                   </Button>
                 </div>
 
@@ -231,7 +241,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="externalId" className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">External ID</Label>
-                      <Badge variant="outline" className="text-[9px] border-indigo-500/20 text-indigo-400 bg-indigo-500/5 px-1.5 h-4">Required</Badge>
+                      <Badge variant="outline" className="text-[9px] border-indigo-500/20 text-indigo-400 bg-indigo-500/5 px-1.5 h-4 font-bold">REQUIRED</Badge>
                     </div>
                     <div className="relative group/id">
                       <Input
@@ -256,7 +266,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                       id="roleArn"
                       placeholder="arn:aws:iam::..."
                       {...register('roleArn')}
-                      className="bg-slate-900 border-slate-800 text-slate-200 font-mono text-xs h-11 focus:ring-indigo-500/20 focus:border-indigo-500/50 rounded-xl"
+                      className="bg-slate-900 border-slate-800 text-slate-200 font-mono text-xs h-11 focus:ring-indigo-500/20 focus:border-indigo-500/50 rounded-xl placeholder:text-slate-700"
                     />
                     {errors.roleArn && (
                       <p className="text-[10px] font-bold text-red-400 ml-1">{errors.roleArn.message}</p>
@@ -266,13 +276,19 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
               </div>
             ) : (
               <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-4 flex items-center gap-3 mb-4">
+                  <AlertTriangle className="w-4 h-4 text-amber-500" />
+                  <p className="text-[10px] font-bold text-amber-200/70 leading-tight uppercase tracking-tight">
+                    Legacy mode: IAM Role is highly recommended for security.
+                  </p>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="accessKey" className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Access Key ID</Label>
                   <Input
                     id="accessKey"
                     placeholder="AKIA..."
                     {...register('accessKey')}
-                    className="bg-slate-900 border-slate-800 text-slate-200 font-mono text-xs h-11 rounded-xl"
+                    className="bg-slate-900 border-slate-800 text-slate-200 font-mono text-xs h-11 rounded-xl placeholder:text-slate-700"
                   />
                   {errors.accessKey && (
                     <p className="text-[10px] font-bold text-red-400 ml-1">{errors.accessKey.message}</p>
@@ -286,7 +302,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                     type="password"
                     placeholder="••••••••••••••••••••••••••••••••"
                     {...register('secretKey')}
-                    className="bg-slate-900 border-slate-800 text-slate-200 font-mono text-xs h-11 rounded-xl"
+                    className="bg-slate-900 border-slate-800 text-slate-200 font-mono text-xs h-11 rounded-xl placeholder:text-slate-700"
                   />
                   {errors.secretKey && (
                     <p className="text-[10px] font-bold text-red-400 ml-1">{errors.secretKey.message}</p>
@@ -308,7 +324,11 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
               <Button
                 type="submit"
                 disabled={isPending}
-                className="flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white h-12 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-indigo-900/20 transition-all active:scale-[0.98]"
+                className={`flex-[2] h-12 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg transition-all active:scale-[0.98] ${
+                  useIamRole 
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-900/20' 
+                    : 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-900/20'
+                }`}
               >
                 {isPending ? (
                   <>

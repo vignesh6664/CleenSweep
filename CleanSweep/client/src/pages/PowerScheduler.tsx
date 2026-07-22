@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Clock, Play, Square, Calendar, Globe, ShieldCheck, Zap, Search } from 'lucide-react';
+import { Clock, Play, Square, Calendar, Globe, ShieldCheck, Zap, Search, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useMe } from '@/hooks/useMe';
@@ -47,6 +47,7 @@ const AWS_REGIONS = [
   { value: 'us-east-1', label: 'US East (N. Virginia)' },
   { value: 'us-west-2', label: 'US West (Oregon)' },
   { value: 'ap-south-1', label: 'Asia Pacific (Mumbai)' },
+  { value: 'ap-south-2', label: 'Asia Pacific (Hyderabad)' },
   { value: 'ap-southeast-1', label: 'Asia Pacific (Singapore)' },
   { value: 'ap-southeast-2', label: 'Asia Pacific (Sydney)' },
   { value: 'eu-west-1', label: 'Europe (Ireland)' },

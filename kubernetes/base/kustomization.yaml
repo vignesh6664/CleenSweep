@@ -4,3 +4,5 @@ resources:
   - deployment-client.yaml
   - service-client.yaml
   - ingress.yaml
+  - resource-management.yaml
+  - network-policies.yaml

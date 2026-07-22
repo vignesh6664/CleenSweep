@@ -45,7 +45,17 @@ export class AwsService {
   private async getCredentials(account: CloudAccount) {
     if (account.roleArn && account.externalId) {
       // Use STS AssumeRole
-      const stsClient = new STSClient({ region: 'us-east-1' });
+      // SECURITY: Explicitly provide Master credentials from ENV for local dev
+      const masterCredentials = {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+      };
+
+      const stsClient = new STSClient({ 
+        region: 'us-east-1',
+        credentials: masterCredentials.accessKeyId ? masterCredentials : undefined
+      });
+
       const command = new AssumeRoleCommand({
         RoleArn: account.roleArn,
         ExternalId: account.externalId,
@@ -79,7 +89,16 @@ export class AwsService {
     try {
       let credentials;
       if (accountData.roleArn && accountData.externalId) {
-        const stsClient = new STSClient({ region: 'us-east-1' });
+        const masterCredentials = {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+        };
+
+        const stsClient = new STSClient({ 
+          region: 'us-east-1',
+          credentials: masterCredentials.accessKeyId ? masterCredentials : undefined
+        });
+
         const command = new AssumeRoleCommand({
           RoleArn: accountData.roleArn,
           ExternalId: accountData.externalId,
@@ -129,6 +148,7 @@ export class AwsService {
       'us-east-1',
       'us-west-2',
       'ap-south-1',
+      'ap-south-2',
       'ap-southeast-1',
       'ap-southeast-2',
       'eu-west-1',
@@ -281,6 +301,7 @@ export class AwsService {
       'us-east-1',
       'us-west-2',
       'ap-south-1',
+      'ap-south-2',
       'ap-southeast-1',
       'ap-southeast-2',
       'eu-west-1',

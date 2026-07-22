@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cleansweep-ingress-canary
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # --- THE MAGIC MAGIC ---
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "10" # Send 10% of traffic here
+spec:
+  rules:
+    - host: app.cleansweep.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: cleansweep-server-canary-svc # A service pointing to the canary pods
+                port:
+                  number: 80

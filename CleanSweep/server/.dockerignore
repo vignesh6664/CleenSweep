@@ -1,10 +1,25 @@
+# Why: We want Docker to install its own modules for its OS (Linux).
 node_modules
-dist
-coverage
+
+# Why: Never bake secrets into an image! They belong in ENV variables.
 .env
+.env.example
+
+# Why: We want Docker to build its own fresh dist.
+dist
+
+# Why: Git history is heavy and a security risk if leaked.
 .git
-.github
+.gitignore
+
+# Why: Documentation and Docker files are not needed at runtime.
+Dockerfile
+README.md
+docs
+
+# Why: System and IDE junk.
+.vscode
+.idea
 *.log
-kubernetes
-infrastructure
-docker-compose.yml
+npm-debug.log
+.DS_Store

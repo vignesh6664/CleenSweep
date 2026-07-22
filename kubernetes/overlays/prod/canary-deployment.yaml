@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cleansweep-server-canary
+  labels:
+    app: cleansweep-server
+    version: canary
+spec:
+  replicas: 1 # Only 1 pod for testing
+  selector:
+    matchLabels:
+      app: cleansweep-server
+      version: canary
+  template:
+    metadata:
+      labels:
+        app: cleansweep-server
+        version: canary
+    spec:
+      containers:
+        - name: server
+          image: cleansweep-server:v-next # This represents the new version you are testing
+          ports:
+            - containerPort: 3000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000

@@ -1,5 +1,8 @@
 resources:
   - ../../base
+  - canary-deployment.yaml
+  - canary-service.yaml
+  - canary-ingress.yaml
 
 namePrefix: prod-
 

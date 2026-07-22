@@ -23,18 +23,14 @@ services:
     build:
       context: ./CleanSweep/server
       dockerfile: Dockerfile
-      target: development
     container_name: cleansweep-server
     ports:
       - "3000:3000"
     environment:
       - PORT=3000
-      # Override the DB URL to point to the docker container instead of localhost
       - DATABASE_URL=postgresql://cleansweep:cleansweep_password@postgres:5432/cleansweep_db?schema=public
     env_file:
       - ./CleanSweep/server/.env
-    volumes:
-      - ./CleanSweep/server/src:/usr/src/app/src
     depends_on:
       postgres:
         condition: service_healthy

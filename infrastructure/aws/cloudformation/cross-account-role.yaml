@@ -1,0 +1,59 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CleanSweep Secure Cross-Account Access - Production Grade'
+
+# =============================================================
+# CleanSweep CloudFormation Template
+# Purpose: Creates a least-privilege IAM Role for CleanSweep
+# Usage: Launch this in your AWS account to enable scanning.
+# =============================================================
+
+Parameters:
+  ExternalId:
+    Type: String
+    MinLength: 10
+    Description: 'The unique External ID provided by your CleanSweep Dashboard'
+  CleanSweepAccountId:
+    Type: String
+    Default: '123456789012' # REPLACE THIS with your actual CleanSweep Production Account ID
+    Description: 'The AWS Account ID of the CleanSweep Engine'
+
+Resources:
+  CleanSweepOptimizationRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      # Use a dynamic name to avoid conflicts
+      RoleName: !Sub 'CleanSweep-Opt-Role-${AWS::StackName}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${CleanSweepAccountId}:root'
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'sts:ExternalId': !Ref ExternalId
+      Description: 'Allows CleanSweep to identify and remediate cloud waste via EC2 and CloudWatch.'
+      Policies:
+        - PolicyName: CleanSweepLeastPrivilege
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ec2:DescribeVolumes'
+                  - 'ec2:DescribeInstances'
+                  - 'ec2:DescribeRegions'
+                  - 'cloudwatch:GetMetricStatistics'
+                  - 'ec2:DeleteVolume'
+                  - 'ec2:StartInstances'
+                  - 'ec2:StopInstances'
+                Resource: '*'
+
+Outputs:
+  RoleArn:
+    Description: 'Copy this ARN and paste it into the CleanSweep Dashboard'
+    Value: !GetAtt CleanSweepOptimizationRole.Arn
+  ExternalIdUsed:
+    Description: 'The External ID that was used for this connection'
+    Value: !Ref ExternalId

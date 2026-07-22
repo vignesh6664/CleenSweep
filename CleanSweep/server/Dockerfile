@@ -1,49 +1,44 @@
-# BUILD FOR LOCAL DEVELOPMENT
-FROM node:22-alpine AS development
+# --- STAGE 1: Builder ---
+# Why: We use alpine for a small footprint. 'builder' stage has all the tools.
+FROM node:22-alpine AS builder
 
-# Set working directory
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Copy package dependencies
+# Why: Copying package files first leverages Docker layer caching.
 COPY package*.json ./
+COPY prisma ./prisma/
 
-# Install all dependencies (including devDependencies)
+# Why: 'npm ci' ensures we install the exact versions from the lockfile.
 RUN npm ci
 
-# Post-install hooks (like Prisma generate) will run automatically if defined in package.json
-# But to be safe, we explicitly copy prisma schema and generate
-COPY prisma ./prisma/
-RUN npx prisma generate
-
-# Copy application source
 COPY . .
 
-# Build the application
+# Why: Generate the DB client and compile TS to JS.
+RUN npx prisma generate
 RUN npm run build
 
-# BUILD FOR PRODUCTION
-FROM node:22-alpine AS production
+# Why: Remove devDependencies (TypeScript, Linters) to keep the final image tiny.
+RUN npm prune --omit=dev
 
-# Set node environment
-ENV NODE_ENV production
-WORKDIR /usr/src/app
+# --- STAGE 2: Runner ---
+# Why: We start fresh to throw away the 1GB of build tools.
+FROM node:22-alpine AS runner
 
-# Copy package dependencies
-COPY package*.json ./
+WORKDIR /app
 
-# Install only production dependencies
-RUN npm ci --omit=dev
+# Why: Tells the app and libraries to run in high-performance mode.
+ENV NODE_ENV=production
 
-# Copy generated prisma client and schema
-COPY --from=development /usr/src/app/prisma ./prisma
-COPY --from=development /usr/src/app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=development /usr/src/app/node_modules/@prisma ./node_modules/@prisma
+# Why: We only steal the 'cooked' files and the 'slim' node_modules from the builder.
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/prisma ./prisma
 
-# Copy built application
-COPY --from=development /usr/src/app/dist ./dist
+# Why: Security! Never run as root. 'node' is a built-in low-privilege user.
+USER node
 
-# Expose the API port
 EXPOSE 3000
 
-# Start the server
+# Why: Starting the app directly with node is faster than using 'npm start'.
 CMD ["node", "dist/main"]

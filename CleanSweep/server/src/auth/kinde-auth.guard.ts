@@ -48,6 +48,7 @@ export class KindeAuthGuard implements CanActivate {
       }
 
       console.log('[KindeAuthGuard] Token decoded successfully');
+      console.log('[KindeAuthGuard] KID:', decodedToken.header.kid);
 
       // Get the signing key from Kinde's JWKS
       const key = await this.getSigningKey(decodedToken.header.kid);
