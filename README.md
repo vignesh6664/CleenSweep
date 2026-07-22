@@ -29,24 +29,34 @@ CleanSweep is a powerful **FinOps dashboard** designed to detect, visualize, and
 - **Visual Analytics**: Beautiful charts and graphs showing total savings and resource distribution.
 - **Real-time Actions**: Delete zombie resources or stop idle instances directly from the UI.
 
+### 💳 Subscription Tiers
+- **Free / Pro Gating**: Tier-based feature access (`subscriptionTier`) backed by Prisma, with Stripe wired in for billing.
+
+### 🔑 Secure Cross-Account Access
+- **CloudFormation Onboarding**: A one-click CloudFormation template (`infrastructure/aws/cloudformation`) provisions a least-privilege, External-ID-scoped IAM role so customers can connect their AWS account without sharing long-lived credentials.
+
 ## 🚀 DevOps Engineering Showcase
 
 This project is built with a **Production-First** DevOps mindset, moving beyond simple code to a complete, automated, and secure infrastructure lifecycle.
 
 ### 🏗️ Infrastructure as Code (Terraform)
-- **Zero-Trust Networking**: Implemented a modular VPC architecture with isolated **Private Subnets** for the Database and Backend.
+- **Zero-Trust Networking**: Implemented a modular VPC architecture (`modules/vpc`) with isolated **Private Subnets** for the Database and Backend.
 - **NAT Gateway Integration**: Secure outbound-only internet access for private resources, preventing direct exposure to the public web.
-- **RDS & ECS Modules**: Fully automated provisioning of Amazon RDS (PostgreSQL) and ECS (Fargate) using reusable Terraform modules.
+- **RDS & Compute Modules**: Fully automated provisioning of Amazon RDS (PostgreSQL, `modules/database`) and application compute (`modules/compute`) using reusable Terraform modules, deployed per-environment (`environments/prod`).
 - **State Management**: Configured S3 remote state storage with **DynamoDB State Locking** for safe, collaborative infrastructure management.
 
 ### ⚡ Continuous Integration & Security (GitHub Actions)
-- **Shift-Left Security**: Integrated **Trivy Vulnerability Scanning** directly into the CI pipeline. The build **fails automatically** if CRITICAL security vulnerabilities are detected in the Docker images.
+- **Shift-Left Security**: Integrated **Trivy Vulnerability Scanning** (Docker images) and **Checkov** (Terraform) directly into the CI pipeline. The build **fails automatically** if CRITICAL vulnerabilities or misconfigurations are detected.
+- **Safe Database Migrations**: A dedicated `prisma migrate deploy` job runs only after backend tests pass, gating deploys on schema safety.
 - **Advanced Caching**: Optimized pipeline speed by using GitHub Actions caching for npm dependencies and **Docker Layer Caching** (`type=gha`), reducing build times by ~40%.
 - **Multi-Stage Builds**: Dockerfiles are optimized to produce minimal, hardened production images by stripping out build-time dependencies.
 
 ### ☸️ Container Orchestration (Kubernetes)
-- **GitOps Ready**: Organized manifests using **Kustomize**, allowing for clean environment overlays (Dev/Prod) without YAML duplication.
+- **GitOps Ready**: Organized manifests using **Kustomize**, allowing for clean environment overlays (base/prod) without YAML duplication.
+- **Canary Deployments**: A separate canary Deployment/Service/Ingress lets the prod overlay shift a slice of traffic to a new version before a full rollout.
 - **Self-Healing Infrastructure**: Configured **Liveness and Readiness Probes** to ensure the orchestrator automatically restarts unhealthy containers.
+- **Resource Management**: CPU/memory `requests` & `limits` and namespace `ResourceQuotas` keep workloads predictable and prevent noisy-neighbor issues.
+- **Network Policies**: Default-deny **NetworkPolicies** restrict pod-to-pod traffic to only what the client/server/database explicitly need.
 - **Ingress Control**: Implemented path-based routing (Layer 7) using an Nginx Ingress Controller to manage traffic flow between the React frontend and NestJS API.
 
 ### 📊 Observability & Monitoring (L.G.P. Stack)
@@ -59,17 +69,29 @@ This project is built with a **Production-First** DevOps mindset, moving beyond 
 ## 🛠️ Technology Stack
 
 **Frontend:**
-- **React 18** + **Vite**: Blazing fast Single Page Application.
-- **Tailwind CSS**: Modern, utility-first styling.
+- **React 19** + **Vite 7**: Blazing fast Single Page Application.
+- **Tailwind CSS 4** + **Radix UI / shadcn**: Modern, accessible component styling.
+- **TanStack Query**: Server-state fetching, caching, and sync.
+- **React Hook Form + Zod**: Type-safe form handling and validation.
 - **Framer Motion**: Smooth, professional animations.
 - **Recharts**: Data visualization.
 - **Kinde Auth React**: Secure authentication SDK.
 
 **Backend:**
-- **NestJS**: Scalable, enterprise-grade Node.js framework.
+- **NestJS 11**: Scalable, enterprise-grade Node.js framework.
 - **Prisma ORM**: Type-safe database access.
 - **PostgreSQL**: Robust relational database.
-- **AWS SDK v3**: Modular interaction with AWS services.
+- **AWS SDK v3** (EC2, CloudWatch, STS): Scanning + cross-account role assumption.
+- **Helmet + Throttler**: Security headers and rate limiting.
+- **JWT / JWKS-RSA**: Kinde token verification.
+- **Stripe**: Subscription billing for Free/Pro tiers.
+
+**Infrastructure & DevOps:**
+- **Terraform**: VPC, RDS, and compute modules across environments.
+- **Kubernetes + Kustomize**: Base manifests with prod overlay (canary, network policies, resource quotas).
+- **CloudFormation**: Customer-facing cross-account IAM role template.
+- **GitHub Actions**: Lint/test, Checkov, Trivy, and gated Prisma migrations.
+- **Prometheus + Grafana + Loki/Promtail**: Metrics, dashboards, and log aggregation.
 
 ## 🚀 Getting Started
 
