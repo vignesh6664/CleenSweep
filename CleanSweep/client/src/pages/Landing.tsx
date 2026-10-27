@@ -1,38 +1,21 @@
 import { motion } from 'framer-motion';
-import { useKindeAuth } from '@kinde-oss/kinde-auth-react';
 import { 
   Zap, 
   ShieldCheck, 
   BarChart3, 
   Clock, 
-  ChevronRight, 
   ArrowRight, 
   CheckCircle2, 
   AlertTriangle,
   Lock,
   Search,
-  Check
+  Check,
+  Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { demoStore } from '@/services/demoStore';
 
 export function Landing() {
-  const { login, register, isAuthenticated } = useKindeAuth();
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1 }
-  };
-
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 selection:bg-indigo-500/30">
       {/* Navigation */}
@@ -48,16 +31,15 @@ export function Landing() {
             <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
           </div>
           <div className="flex items-center gap-4">
-            {isAuthenticated ? (
-              <Button onClick={() => window.location.href = '/dashboard'} className="bg-indigo-600 hover:bg-indigo-700">
-                Go to Dashboard
-              </Button>
-            ) : (
-              <>
-                <button onClick={() => login()} className="text-sm font-medium hover:text-white transition-colors">Log in</button>
-                <Button onClick={() => register()} className="bg-indigo-600 hover:bg-indigo-700">Get Started</Button>
-              </>
-            )}
+            <Button
+              onClick={() => {
+                demoStore.enterDemoMode();
+                window.location.href = '/dashboard';
+              }}
+              className="bg-indigo-600 hover:bg-indigo-700"
+            >
+              Go to Dashboard
+            </Button>
           </div>
         </div>
       </nav>
@@ -99,11 +81,27 @@ export function Landing() {
             transition={{ delay: 0.2 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
-            <Button size="lg" onClick={() => register()} className="bg-indigo-600 hover:bg-indigo-700 text-lg px-8 py-6 h-auto">
+            <Button
+              size="lg"
+              onClick={() => {
+                demoStore.enterDemoMode();
+                window.location.href = '/dashboard';
+              }}
+              className="bg-indigo-600 hover:bg-indigo-700 text-lg px-8 py-6 h-auto"
+            >
               Start Free Scan <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
-            <Button size="lg" variant="outline" className="border-slate-700 hover:bg-slate-800 text-lg px-8 py-6 h-auto">
-              View Demo
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => {
+                demoStore.enterDemoMode();
+                window.location.href = '/dashboard';
+              }}
+              className="border-amber-500/50 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 hover:text-amber-200 text-lg px-8 py-6 h-auto gap-2 shadow-lg shadow-amber-500/10"
+            >
+              <Sparkles className="w-5 h-5 text-amber-400" />
+              Explore Live Demo
             </Button>
           </motion.div>
 
@@ -240,7 +238,16 @@ export function Landing() {
                 <PricingItem label="Manual Reporting" disabled />
                 <PricingItem label="One-Click Remediation" disabled />
               </ul>
-              <Button variant="outline" onClick={() => register()} className="w-full border-slate-700">Get Started</Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  demoStore.enterDemoMode();
+                  window.location.href = '/dashboard';
+                }}
+                className="w-full border-slate-700"
+              >
+                Get Started
+              </Button>
             </div>
             
             {/* Pro Tier */}
@@ -256,7 +263,15 @@ export function Landing() {
                 <PricingItem label="Full Audit & Compliance Logs" />
                 <PricingItem label="Weekly Savings Reports" />
               </ul>
-              <Button onClick={() => register()} className="w-full bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-900/40">Start Free Trial</Button>
+              <Button
+                onClick={() => {
+                  demoStore.enterDemoMode();
+                  window.location.href = '/dashboard';
+                }}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-900/40"
+              >
+                Start Free Trial
+              </Button>
             </div>
           </div>
         </div>
@@ -270,8 +285,27 @@ export function Landing() {
             <h2 className="text-4xl font-bold mb-6 relative z-10">Start Saving in 3 Minutes</h2>
             <p className="text-indigo-100 mb-10 max-w-lg mx-auto relative z-10">Connect your account today and find your first $100 in savings before lunch.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center relative z-10">
-              <Button size="lg" onClick={() => register()} className="bg-white text-indigo-900 hover:bg-slate-100 px-10">Get Started for Free</Button>
-              <Button size="lg" variant="ghost" className="text-white hover:bg-white/10">Schedule a Demo</Button>
+              <Button
+                size="lg"
+                onClick={() => {
+                  demoStore.enterDemoMode();
+                  window.location.href = '/dashboard';
+                }}
+                className="bg-white text-indigo-900 hover:bg-slate-100 px-10"
+              >
+                Get Started for Free
+              </Button>
+              <Button
+                size="lg"
+                variant="ghost"
+                onClick={() => {
+                  demoStore.enterDemoMode();
+                  window.location.href = '/dashboard';
+                }}
+                className="text-white hover:bg-white/10"
+              >
+                Launch Demo
+              </Button>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, Power, Loader2, Lock, Search } from 'lucide-react';
+import { Activity, Loader2, Lock, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { stopInstance } from '@/services/api';
 import { useQueryClient } from '@tanstack/react-query';

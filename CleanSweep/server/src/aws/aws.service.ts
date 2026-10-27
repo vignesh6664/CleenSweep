@@ -23,6 +23,7 @@ export interface OrphanedVolume {
   sizeGb: number;
   region: string;
   monthlyCost: number;
+  tags?: Record<string, string>;
 }
 
 export interface IdleInstance {
@@ -32,6 +33,7 @@ export interface IdleInstance {
   region: string;
   avgCpuUtilization: number;
   monthlyCost: number;
+  tags?: Record<string, string>;
 }
 
 @Injectable()
@@ -173,11 +175,17 @@ export class AwsService {
               const sizeGb = volume.Size || 0;
               const monthlyCost = sizeGb * 0.1;
 
+              const tags = volume.Tags?.reduce((acc, tag) => {
+                if (tag.Key) acc[tag.Key] = tag.Value || '';
+                return acc;
+              }, {} as Record<string, string>) || {};
+
               allOrphanedVolumes.push({
                 resourceId: volume.VolumeId || 'unknown',
                 sizeGb,
                 region: region,
                 monthlyCost,
+                tags,
               });
             }
           }
@@ -355,6 +363,11 @@ export class AwsService {
                   const instanceType = instance.InstanceType || 't2.micro';
                   const monthlyCost = this.calculateInstanceMonthlyCost(instanceType);
 
+                  const tags = instance.Tags?.reduce((acc, tag) => {
+                    if (tag.Key) acc[tag.Key] = tag.Value || '';
+                    return acc;
+                  }, {} as Record<string, string>) || {};
+
                   allIdleInstances.push({
                     instanceId,
                     instanceName,
@@ -362,6 +375,7 @@ export class AwsService {
                     region,
                     avgCpuUtilization: Math.round(avgCpu * 100) / 100,
                     monthlyCost,
+                    tags,
                   });
                 }
               }
@@ -373,6 +387,51 @@ export class AwsService {
       }
     }
     return allIdleInstances;
+  }
+
+  async getResourceTags(
+    accountId: string,
+    region: string,
+    resourceId: string,
+    userId: string,
+  ): Promise<Record<string, string>> {
+    try {
+      const account = await this.prisma.cloudAccount.findFirst({
+        where: { id: accountId, userId },
+      });
+      if (!account) return {};
+
+      const credentials = await this.getCredentials(account);
+      const ec2Client = new EC2Client({ region, credentials });
+
+      if (resourceId.startsWith('vol-')) {
+        const response = await ec2Client.send(
+          new DescribeVolumesCommand({ VolumeIds: [resourceId] }),
+        );
+        const volume = response.Volumes?.[0];
+        return (
+          volume?.Tags?.reduce((acc, tag) => {
+            if (tag.Key) acc[tag.Key] = tag.Value || '';
+            return acc;
+          }, {} as Record<string, string>) || {}
+        );
+      } else if (resourceId.startsWith('i-')) {
+        const response = await ec2Client.send(
+          new DescribeInstancesCommand({ InstanceIds: [resourceId] }),
+        );
+        const instance = response.Reservations?.[0]?.Instances?.[0];
+        return (
+          instance?.Tags?.reduce((acc, tag) => {
+            if (tag.Key) acc[tag.Key] = tag.Value || '';
+            return acc;
+          }, {} as Record<string, string>) || {}
+        );
+      }
+      return {};
+    } catch (error) {
+      console.warn(`Could not fetch tags for ${resourceId}:`, error.message);
+      return {};
+    }
   }
 
   private calculateInstanceMonthlyCost(instanceType: string): number {

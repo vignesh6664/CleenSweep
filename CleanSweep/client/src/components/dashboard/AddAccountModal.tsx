@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, HelpCircle, ExternalLink, ShieldCheck, Key, Info, Copy, Cloud, Check, AlertTriangle } from 'lucide-react';
+import { Loader2, ExternalLink, ShieldCheck, Key, Info, Copy, Cloud, Check, AlertTriangle } from 'lucide-react';
 import { useCreateAccount } from '@/hooks/useCreateAccount';
 import { toast } from 'sonner';
 

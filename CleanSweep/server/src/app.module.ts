@@ -8,6 +8,7 @@ import { ScannerModule } from './scanner/scanner.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { AuthModule } from './auth/auth.module';
 import { CommonModule } from './common/common.module';
+import { CopilotModule } from './copilot/copilot.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
@@ -22,6 +23,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
     AccountsModule,
     ScannerModule,
     SchedulerModule,
+    CopilotModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],

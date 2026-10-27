@@ -10,10 +10,9 @@ import { useIdleInstances } from '../hooks/useIdleInstances';
 import { useMe } from '../hooks/useMe';
 import { useAuditLogs } from '../hooks/useAuditLogs';
 import { motion } from 'framer-motion';
-import { Loader2, Plus, Zap, ShieldCheck, History, ExternalLink, ArrowRight } from 'lucide-react';
+import { Loader2, Plus, Zap, History, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 export function Dashboard() {

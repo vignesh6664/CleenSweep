@@ -14,11 +14,10 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Clock, Play, Square, Calendar, Globe, ShieldCheck, Zap, Search, Loader2 } from 'lucide-react';
+import { Clock, Calendar, Globe, Zap, Search, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useMe } from '@/hooks/useMe';
